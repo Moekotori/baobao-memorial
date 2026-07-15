@@ -20,6 +20,13 @@ stats:
   - label: 绝招
     value: 卖惨哭
     unit: ""
+gallery:
+  - src: images/瓜面前.jpg
+    caption: 瓜主 · 面前
+    alt: 瓜面前
+  - src: images/瓜开.jpg
+    caption: 瓜开！
+    alt: 瓜开
 highlights:
   - icon: "🍜"
     title: 吃饭不给钱

@@ -45,6 +45,29 @@ function renderHero(meta) {
   `;
 }
 
+function renderGallery(gallery = []) {
+  if (!gallery?.length) return '';
+
+  const items = gallery.map((img) => `
+    <figure class="gallery-item">
+      <div class="gallery-frame">
+        <img src="${escapeHtml(img.src)}" alt="${escapeHtml(img.alt || img.caption || '')}" loading="lazy" />
+      </div>
+      ${img.caption ? `<figcaption class="gallery-caption">${escapeHtml(img.caption)}</figcaption>` : ''}
+    </figure>
+  `).join('');
+
+  return `
+    <section class="section gallery-section" id="gallery">
+      <div class="section-header">
+        <div class="section-tag">PHOTO</div>
+        <h2 class="section-title">瓜主风采</h2>
+      </div>
+      <div class="image-gallery">${items}</div>
+    </section>
+  `;
+}
+
 function renderStats(stats = []) {
   if (!stats.length) return '';
   const cards = stats.map((s) => `
@@ -135,6 +158,7 @@ function renderArchive(bodyHtml) {
 function renderPage({ meta, bodyHtml, posts }) {
   app.innerHTML = [
     renderHero(meta),
+    renderGallery(meta.gallery),
     renderStats(meta.stats),
     renderHighlights(meta.highlights),
     renderPosts(posts),
