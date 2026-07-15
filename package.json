@@ -4,6 +4,7 @@
   "description": "光荣事迹纪念馆 - 实时文档驱动",
   "scripts": {
     "start": "npx --yes serve . -l 3000",
-    "dev": "npx --yes serve . -l 3000"
+    "dev": "npx --yes serve . -l 3000",
+    "deploy": "git add . && git commit -m \"update content\" && git push"
   }
 }
