@@ -1,10 +1,9 @@
 const POLL_INTERVAL = 3000;
-const DATA_URL = 'data/content.json';
-const POSTS_URL = 'data/posts.json';
+const CONTENT_URL = 'content/index.md';
+const MANIFEST_URL = 'posts/manifest.json';
 
 let lastHash = '';
-let contentData = null;
-let postsData = [];
+let siteData = null;
 
 const app = document.getElementById('app');
 const loading = document.getElementById('loading');
@@ -17,27 +16,16 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-function hashContent(data, posts) {
-  return JSON.stringify({ data, posts });
-}
-
 function formatDate(iso) {
   if (!iso) return '';
   try {
-    const d = new Date(iso);
-    return d.toLocaleString('zh-CN', {
+    return new Date(iso).toLocaleString('zh-CN', {
       year: 'numeric', month: '2-digit', day: '2-digit',
       hour: '2-digit', minute: '2-digit',
     });
   } catch {
     return iso;
   }
-}
-
-function mergePosts(remote, local) {
-  const map = new Map();
-  [...remote, ...local].forEach((p) => map.set(p.id, p));
-  return [...map.values()].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
 function renderHero(meta) {
@@ -47,7 +35,7 @@ function renderHero(meta) {
       <h1 class="hero-title">${escapeHtml(meta.title)}</h1>
       <p class="hero-subtitle">${escapeHtml(meta.subtitle)}</p>
       <div class="hero-subject">
-        <div class="hero-subject-label">瓜主</div>
+        <div class="hero-subject-label">${escapeHtml(meta.subjectAlias || '瓜主')}</div>
         <div class="hero-subject-name">${escapeHtml(meta.subject)}</div>
       </div>
       <p class="hero-intro">${escapeHtml(meta.intro)}</p>
@@ -57,10 +45,11 @@ function renderHero(meta) {
   `;
 }
 
-function renderStats(stats) {
+function renderStats(stats = []) {
+  if (!stats.length) return '';
   const cards = stats.map((s) => `
     <div class="stat-card">
-      <div class="stat-value">${escapeHtml(s.value)}<span class="stat-unit">${escapeHtml(s.unit)}</span></div>
+      <div class="stat-value">${escapeHtml(String(s.value))}<span class="stat-unit">${escapeHtml(s.unit || '')}</span></div>
       <div class="stat-label">${escapeHtml(s.label)}</div>
     </div>
   `).join('');
@@ -76,7 +65,8 @@ function renderStats(stats) {
   `;
 }
 
-function renderHighlights(highlights) {
+function renderHighlights(highlights = []) {
+  if (!highlights.length) return '';
   const cards = highlights.map((h) => `
     <div class="highlight-card">
       <div class="highlight-icon">${h.icon}</div>
@@ -97,7 +87,7 @@ function renderHighlights(highlights) {
 }
 
 function renderPosts(posts) {
-  if (!posts || posts.length === 0) return '';
+  if (!posts?.length) return '';
 
   const cards = posts.map((p) => {
     const critical = p.severity === 'critical';
@@ -107,10 +97,10 @@ function renderPosts(posts) {
           <h3 class="post-title">${escapeHtml(p.title)}</h3>
           <div class="post-meta">
             ${critical ? '<span class="episode-badge">⚠ 严重</span>' : ''}
-            <span class="episode-time">${escapeHtml(p.time)}</span>
+            ${p.time ? `<span class="episode-time">${escapeHtml(p.time)}</span>` : ''}
           </div>
         </div>
-        <p class="post-content">${escapeHtml(p.content)}</p>
+        <div class="post-content markdown-body">${p.html}</div>
         <div class="post-footer">
           <span class="post-author">${escapeHtml(p.author)}</span>
           <span class="post-date">${formatDate(p.createdAt)}</span>
@@ -130,94 +120,37 @@ function renderPosts(posts) {
   `;
 }
 
-function renderEpisodes(episodes) {
-  return episodes.map((ep) => {
-    const items = ep.items.map((item) => `
-      <div class="event-item">
-        <div class="event-title">${escapeHtml(item.title)}</div>
-        <div class="event-content">${escapeHtml(item.content)}</div>
-      </div>
-    `).join('');
-
-    const criticalClass = ep.severity === 'critical' ? ' critical' : '';
-    const badge = ep.severity === 'critical'
-      ? '<span class="episode-badge">⚠ 严重</span>' : '';
-
-    return `
-      <article class="episode${criticalClass}">
-        <div class="episode-head">
-          <span class="episode-title">${escapeHtml(ep.title)}</span>
-          <div style="display:flex;gap:8px;align-items:center">
-            ${badge}
-            <span class="episode-time">${escapeHtml(ep.time)}</span>
-          </div>
-        </div>
-        <div class="episode-body">${items}</div>
-      </article>
-    `;
-  }).join('');
-}
-
-function renderChapters(chapters) {
-  const content = chapters.map((ch) => `
-    <div class="chapter">
-      <div class="chapter-header">
-        <h3 class="chapter-title">${escapeHtml(ch.title)}</h3>
-        <span class="chapter-author">作者：${escapeHtml(ch.author)}</span>
-        ${ch.authorNote ? `<p class="chapter-note">${escapeHtml(ch.authorNote)}</p>` : ''}
-      </div>
-      ${renderEpisodes(ch.episodes)}
-    </div>
-  `).join('');
-
+function renderArchive(bodyHtml) {
   return `
     <section class="section" id="chapters">
       <div class="section-header">
         <div class="section-tag">ARCHIVE</div>
         <h2 class="section-title">完整档案记录</h2>
       </div>
-      ${content}
+      ${Markdown.renderBody(bodyHtml)}
     </section>
   `;
 }
 
-function renderExtras(extras) {
-  if (!extras || extras.length === 0) return '';
-
-  const cards = extras.map((e) => `
-    <div class="extra-card">
-      <div class="extra-title">${escapeHtml(e.title)}</div>
-      <div class="extra-content">${escapeHtml(e.content)}</div>
-    </div>
-  `).join('');
-
-  return `
-    <section class="section" id="extras">
-      <div class="section-header">
-        <div class="section-tag">EXTRA</div>
-        <h2 class="section-title">番外篇</h2>
-      </div>
-      <div class="extras-list">${cards}</div>
-    </section>
-  `;
-}
-
-function renderPage(data, posts) {
-  const { meta, stats, highlights, chapters, extras } = data;
-
+function renderPage({ meta, bodyHtml, posts }) {
   app.innerHTML = [
     renderHero(meta),
-    renderStats(stats),
-    renderHighlights(highlights),
+    renderStats(meta.stats),
+    renderHighlights(meta.highlights),
     renderPosts(posts),
-    renderChapters(chapters),
-    renderExtras(extras),
+    renderArchive(bodyHtml),
   ].join('');
 
-  document.getElementById('footer-quote').textContent = data.footer?.quote || '';
-  document.getElementById('footer-note').textContent = data.footer?.note || '';
+  document.getElementById('footer-quote').textContent = meta.footer?.quote || '';
+  document.getElementById('footer-note').textContent = meta.footer?.note || '';
   footer.hidden = false;
   document.title = `${meta.title} · ${meta.subtitle}`;
+}
+
+async function fetchText(url) {
+  const res = await fetch(`${url}?t=${Date.now()}`, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`加载失败: ${res.status} ${url}`);
+  return res.text();
 }
 
 async function fetchJson(url) {
@@ -226,41 +159,60 @@ async function fetchJson(url) {
   return res.json();
 }
 
+async function loadPosts() {
+  const manifest = await fetchJson(MANIFEST_URL).catch(() => []);
+  const files = Array.isArray(manifest) ? manifest : [];
+
+  const posts = await Promise.all(
+    files.map(async (file) => {
+      try {
+        const text = await fetchText(`posts/${file}`);
+        return Markdown.parsePostMarkdown(text, file);
+      } catch {
+        return null;
+      }
+    }),
+  );
+
+  const local = typeof Publish !== 'undefined' ? Publish.getLocalPosts() : [];
+  const map = new Map();
+  [...posts.filter(Boolean), ...local].forEach((p) => map.set(p.id, p));
+  return [...map.values()].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+}
+
 async function loadContent(isInitial = false) {
   try {
-    const [data, remotePosts] = await Promise.all([
-      fetchJson(DATA_URL),
-      fetchJson(POSTS_URL).catch(() => []),
+    const [mdText, posts] = await Promise.all([
+      fetchText(CONTENT_URL),
+      loadPosts(),
     ]);
 
-    const localPosts = typeof Publish !== 'undefined' ? Publish.getLocalPosts() : [];
-    const posts = mergePosts(remotePosts, localPosts);
-    const hash = hashContent(data, posts);
+    const { meta, body } = Markdown.parseFrontmatter(mdText);
+    const bodyHtml = Markdown.toHtml(body);
+    const hash = JSON.stringify({ meta, body, posts });
 
     if (hash !== lastHash) {
-      const isUpdate = !isInitial && lastHash !== '';
       lastHash = hash;
-      contentData = data;
-      postsData = posts;
+      siteData = { meta, bodyHtml, posts };
 
       if (isInitial) {
         loading.style.display = 'none';
-        if (typeof Publish !== 'undefined') Publish.init(data.meta);
-        renderPage(data, posts);
+        if (typeof Publish !== 'undefined') Publish.init(meta);
+        renderPage(siteData);
       } else {
         app.classList.add('flash-update');
-        renderPage(data, posts);
+        renderPage(siteData);
         setTimeout(() => app.classList.remove('flash-update'), 600);
       }
 
-      updateStatus.textContent = `已同步 · ${formatDate(data.meta.lastUpdated)}`;
+      updateStatus.textContent = `已同步 · ${formatDate(meta.lastUpdated)}`;
     } else {
-      updateStatus.textContent = `实时同步中 · ${formatDate(data.meta.lastUpdated)}`;
+      updateStatus.textContent = `实时同步中 · ${formatDate(meta.lastUpdated)}`;
     }
   } catch (err) {
     console.error(err);
     if (isInitial) {
-      loading.innerHTML = '<p style="color:var(--red)">加载失败，请确认已启动本地服务器</p>';
+      loading.innerHTML = '<p style="color:var(--red)">加载失败，请运行 npm start 启动服务</p>';
     }
     updateStatus.textContent = '同步失败';
   }

@@ -2,10 +2,10 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
+const { createPost, touchContentTimestamp } = require('./lib/publish-core');
 
 const PORT = 3000;
 const ROOT = __dirname;
-const POSTS_FILE = path.join(ROOT, 'data', 'posts.json');
 const ADMIN_PIN = process.env.ADMIN_PIN || '8888';
 
 const MIME = {
@@ -13,25 +13,25 @@ const MIME = {
   '.css': 'text/css; charset=utf-8',
   '.js': 'application/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
+  '.md': 'text/plain; charset=utf-8',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
 };
 
-function readPosts() {
-  try {
-    return JSON.parse(fs.readFileSync(POSTS_FILE, 'utf-8'));
-  } catch {
-    return [];
-  }
-}
-
-function writePosts(posts) {
-  fs.writeFileSync(POSTS_FILE, JSON.stringify(posts, null, 2), 'utf-8');
-}
-
 function gitPush(message) {
-  execSync('git add data/posts.json', { cwd: ROOT, stdio: 'pipe' });
-  execSync(`git commit -m "${message.replace(/"/g, '\\"')}"`, { cwd: ROOT, stdio: 'pipe' });
-  execSync('git push', { cwd: ROOT, stdio: 'pipe' });
+  execSync('git add posts/ content/index.md', { cwd: ROOT, stdio: 'pipe' });
+  try {
+    execSync(`git commit -m "${message.replace(/"/g, '\\"')}"`, { cwd: ROOT, stdio: 'pipe' });
+    execSync('git push', { cwd: ROOT, stdio: 'pipe' });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function handlePublish(body, res) {
@@ -57,27 +57,16 @@ function handlePublish(body, res) {
     return;
   }
 
-  const newPost = {
-    id: `post-${Date.now()}`,
+  const newPost = createPost({
     title: post.title.trim(),
     content: post.content.trim(),
     author: (post.author || '匿名').trim(),
     time: (post.time || new Date().toLocaleDateString('zh-CN')).trim(),
     severity: post.severity === 'critical' ? 'critical' : 'normal',
-    createdAt: new Date().toISOString(),
-  };
+  });
 
-  const posts = readPosts();
-  posts.unshift(newPost);
-  writePosts(posts);
-
-  let pushed = false;
-  try {
-    gitPush(`发布: ${newPost.title}`);
-    pushed = true;
-  } catch {
-    pushed = false;
-  }
+  touchContentTimestamp();
+  const pushed = gitPush(`发布: ${newPost.title}`);
 
   res.writeHead(200, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({ ok: true, post: newPost, pushed }));
@@ -101,7 +90,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  const urlPath = req.url.split('?')[0];
+  const urlPath = decodeURIComponent(req.url.split('?')[0]);
   const filePath = path.join(ROOT, urlPath === '/' ? 'index.html' : urlPath);
 
   if (!filePath.startsWith(ROOT)) {
@@ -124,5 +113,5 @@ const server = http.createServer((req, res) => {
 
 server.listen(PORT, () => {
   console.log(`\n  光荣事迹纪念馆 → http://localhost:${PORT}`);
-  console.log('  发布 API 已启用，右下角按钮可直接投稿\n');
+  console.log('  编辑 content/index.md 实时更新 · 右下角按钮发布投稿\n');
 });

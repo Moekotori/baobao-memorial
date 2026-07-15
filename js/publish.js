@@ -58,7 +58,7 @@ const Publish = {
 
   verifyPin() {
     const input = document.getElementById('pin-input').value.trim();
-    const expected = this.meta?.adminPin || '8888';
+    const expected = String(this.meta?.adminPin || '8888');
     const err = document.getElementById('pin-error');
 
     if (input !== expected) {
@@ -98,12 +98,6 @@ const Publish = {
       || '';
   },
 
-  async fetchRemotePosts() {
-    const res = await fetch(`data/posts.json?t=${Date.now()}`, { cache: 'no-store' });
-    if (!res.ok) return [];
-    return res.json();
-  },
-
   async submitPost() {
     const title = document.getElementById('post-title').value.trim();
     const content = document.getElementById('post-content').value.trim();
@@ -137,32 +131,24 @@ const Publish = {
 
       if (res.ok) {
         okEl.textContent = data.pushed === false
-          ? '已保存！请运行 npm run deploy 推送到线上'
-          : '发布成功！全站将在几秒内更新';
+          ? '已保存本地文件，请 git push 同步到线上'
+          : '发布成功！全站 3 秒内自动更新';
         okEl.hidden = false;
-        this.showToast(data.pushed === false ? '已本地保存' : '发布成功');
-      } else if (res.status === 404 || res.status === 0) {
-        await this.fallbackPublish(post, pin, okEl);
-      } else {
-        throw new Error(data.error || '发布失败');
+        this.showToast('发布成功');
+        window.dispatchEvent(new CustomEvent('posts-updated'));
+        document.getElementById('panel-form').reset();
+        setTimeout(() => this.closeModal(), 1500);
+        return;
       }
 
-      document.getElementById('panel-form').reset();
-      window.dispatchEvent(new CustomEvent('posts-updated'));
-      setTimeout(() => this.closeModal(), 1800);
+      throw new Error(data.error || `发布失败 (${res.status})`);
     } catch (err) {
-      if (err.message?.includes('fetch') || err.name === 'TypeError') {
-        try {
-          await this.fallbackPublish(post, pin, document.getElementById('form-success'));
-          document.getElementById('panel-form').reset();
-          window.dispatchEvent(new CustomEvent('posts-updated'));
-          setTimeout(() => this.closeModal(), 1800);
-        } catch (e) {
-          errEl.textContent = e.message || '发布失败';
-          errEl.hidden = false;
-        }
+      if (err.name === 'TypeError' || err.message?.includes('fetch')) {
+        await this.localFallback(post, pin, okEl);
+        document.getElementById('panel-form').reset();
+        setTimeout(() => this.closeModal(), 2000);
       } else {
-        errEl.textContent = err.message || '发布失败，请重试';
+        errEl.textContent = err.message;
         errEl.hidden = false;
       }
     } finally {
@@ -171,35 +157,52 @@ const Publish = {
     }
   },
 
-  async fallbackPublish(post, pin, okEl) {
-    if (pin !== (this.meta?.adminPin || '8888')) {
-      throw new Error('管理密码错误');
-    }
+  async localFallback(post, pin, okEl) {
+    if (pin !== String(this.meta?.adminPin || '8888')) throw new Error('管理密码错误');
 
-    const newPost = {
+    const createdAt = new Date().toISOString();
+    const filename = `${Date.now()}-post.md`;
+    const md = [
+      '---',
+      `title: "${post.title.replace(/"/g, '\\"')}"`,
+      `author: ${post.author}`,
+      `time: "${post.time}"`,
+      `severity: ${post.severity}`,
+      `createdAt: ${createdAt}`,
+      '---',
+      '',
+      post.content,
+    ].join('\n');
+
+    const localPost = {
       ...post,
-      id: `post-${Date.now()}`,
-      createdAt: new Date().toISOString(),
+      id: filename.replace('.md', ''),
+      createdAt,
+      filename,
+      html: typeof marked !== 'undefined' ? marked.parse(post.content) : post.content,
     };
 
-    const remote = await this.fetchRemotePosts();
-    const merged = [newPost, ...remote.filter((p) => p.id !== newPost.id)];
+    this.saveLocalPost(localPost);
+    this.downloadFile(md, filename);
+    this.downloadManifestHint();
 
-    this.saveLocalPost(newPost);
-    this.downloadPosts(merged);
-
-    okEl.textContent = '已生成 posts.json 并下载，放入 data/ 后运行 npm run deploy';
+    okEl.textContent = 'API 不可用，已下载 .md 文件，放入 posts/ 并更新 manifest.json';
     okEl.hidden = false;
-    this.showToast('文件已下载，请 deploy 上线', 'warn');
+    this.showToast('已下载 Markdown 文件', 'warn');
+    window.dispatchEvent(new CustomEvent('posts-updated'));
   },
 
-  downloadPosts(posts) {
-    const blob = new Blob([JSON.stringify(posts, null, 2)], { type: 'application/json' });
+  downloadFile(content, name) {
+    const blob = new Blob([content], { type: 'text/markdown' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'posts.json';
+    a.download = name;
     a.click();
     URL.revokeObjectURL(a.href);
+  },
+
+  downloadManifestHint() {
+    /* user manually adds filename to manifest */
   },
 
   saveLocalPost(post) {

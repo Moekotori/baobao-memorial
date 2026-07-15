@@ -40,7 +40,7 @@
   <footer class="site-footer" id="footer" hidden>
     <p class="footer-quote" id="footer-quote"></p>
     <p class="footer-note" id="footer-note"></p>
-    <p class="footer-hint">编辑 <code>data/content.json</code> 或点击右下角按钮发布新内容</p>
+    <p class="footer-hint">编辑 <code>content/index.md</code> · 图片放 <code>images/</code> · 右下角按钮实时发布</p>
   </footer>
 
   <button class="fab" id="fab-publish" title="发布新内容" aria-label="发布新内容">
@@ -67,8 +67,8 @@
         <label class="modal-label">标题</label>
         <input class="modal-input" id="post-title" required placeholder="例：Ep5 · 新瓜曝光" maxlength="100" />
 
-        <label class="modal-label">内容</label>
-        <textarea class="modal-textarea" id="post-content" required placeholder="写下新的光荣事迹…" rows="6" maxlength="5000"></textarea>
+        <label class="modal-label">内容（支持 Markdown）</label>
+        <textarea class="modal-textarea" id="post-content" required placeholder="支持 Markdown，图片用 ![](images/xxx.png)" rows="6" maxlength="5000"></textarea>
 
         <div class="modal-row">
           <div class="modal-field">
@@ -102,6 +102,9 @@
 
   <div class="toast" id="toast" hidden></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/js-yaml@4/dist/js-yaml.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="js/markdown.js"></script>
   <script src="js/publish.js"></script>
   <script src="js/app.js"></script>
 </body>
