@@ -20,6 +20,7 @@
       <div class="nav-links">
         <a href="#stats">数据</a>
         <a href="#highlights">事迹</a>
+        <a href="#feed">投稿</a>
         <a href="#chapters">档案</a>
       </div>
       <div class="nav-status">
@@ -39,9 +40,69 @@
   <footer class="site-footer" id="footer" hidden>
     <p class="footer-quote" id="footer-quote"></p>
     <p class="footer-note" id="footer-note"></p>
-    <p class="footer-hint">编辑 <code>data/content.json</code> 即可实时更新本站内容</p>
+    <p class="footer-hint">编辑 <code>data/content.json</code> 或点击右下角按钮发布新内容</p>
   </footer>
 
+  <button class="fab" id="fab-publish" title="发布新内容" aria-label="发布新内容">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+    <span>发布</span>
+  </button>
+
+  <div class="modal-overlay" id="modal-overlay" hidden>
+    <div class="modal" role="dialog" aria-labelledby="modal-title">
+      <button class="modal-close" id="modal-close" aria-label="关闭">&times;</button>
+
+      <div id="panel-pin" hidden>
+        <h2 class="modal-title" id="modal-title">管理员验证</h2>
+        <p class="modal-desc">输入管理密码后即可发布新内容</p>
+        <input class="modal-input" id="pin-input" type="password" placeholder="管理密码" maxlength="20" />
+        <button class="modal-btn primary" id="pin-submit">确认</button>
+        <p class="modal-error" id="pin-error" hidden></p>
+      </div>
+
+      <form id="panel-form" hidden>
+        <h2 class="modal-title">发布新内容</h2>
+        <p class="modal-desc">新内容将出现在「最新投稿」栏目，全站实时可见</p>
+
+        <label class="modal-label">标题</label>
+        <input class="modal-input" id="post-title" required placeholder="例：Ep5 · 新瓜曝光" maxlength="100" />
+
+        <label class="modal-label">内容</label>
+        <textarea class="modal-textarea" id="post-content" required placeholder="写下新的光荣事迹…" rows="6" maxlength="5000"></textarea>
+
+        <div class="modal-row">
+          <div class="modal-field">
+            <label class="modal-label">作者</label>
+            <input class="modal-input" id="post-author" placeholder="匿名" maxlength="30" />
+          </div>
+          <div class="modal-field">
+            <label class="modal-label">时间</label>
+            <input class="modal-input" id="post-time" placeholder="2026.7" maxlength="20" />
+          </div>
+        </div>
+
+        <label class="modal-label">严重程度</label>
+        <div class="modal-radio-group">
+          <label class="modal-radio"><input type="radio" name="severity" value="normal" checked /> 普通</label>
+          <label class="modal-radio"><input type="radio" name="severity" value="critical" /> ⚠ 严重</label>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="modal-btn ghost" id="form-cancel">取消</button>
+          <button type="submit" class="modal-btn primary" id="form-submit">
+            <span id="submit-text">发布到网站</span>
+            <span class="submit-spinner" id="submit-spinner" hidden></span>
+          </button>
+        </div>
+        <p class="modal-error" id="form-error" hidden></p>
+        <p class="modal-success" id="form-success" hidden></p>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="js/publish.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
