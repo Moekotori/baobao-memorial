@@ -6,7 +6,7 @@ const { createPost, touchContentTimestamp } = require('./lib/publish-core');
 
 const PORT = 3000;
 const ROOT = __dirname;
-const ADMIN_PIN = process.env.ADMIN_PIN || '8888';
+const ADMIN_PIN = process.env.ADMIN_PIN || 'liangxianyu';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',

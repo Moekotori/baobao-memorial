@@ -1,5 +1,5 @@
 const REPO = { owner: 'Moekotori', name: 'baobao-memorial' };
-const ADMIN_PIN = process.env.ADMIN_PIN || '8888';
+const ADMIN_PIN = process.env.ADMIN_PIN || 'liangxianyu';
 
 function slugify(title) {
   return title

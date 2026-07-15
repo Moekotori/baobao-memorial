@@ -58,7 +58,7 @@ const Publish = {
 
   verifyPin() {
     const input = document.getElementById('pin-input').value.trim();
-    const expected = String(this.meta?.adminPin || '8888');
+    const expected = String(this.meta?.adminPin || 'liangxianyu');
     const err = document.getElementById('pin-error');
 
     if (input !== expected) {
@@ -158,7 +158,7 @@ const Publish = {
   },
 
   async localFallback(post, pin, okEl) {
-    if (pin !== String(this.meta?.adminPin || '8888')) throw new Error('管理密码错误');
+    if (pin !== String(this.meta?.adminPin || 'liangxianyu')) throw new Error('管理密码错误');
 
     const createdAt = new Date().toISOString();
     const filename = `${Date.now()}-post.md`;
