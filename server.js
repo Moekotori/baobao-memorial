@@ -24,7 +24,7 @@ const MIME = {
 };
 
 function gitPush(message) {
-  execSync('git add posts/ content/index.md', { cwd: ROOT, stdio: 'pipe' });
+  execSync('git add posts/ content/index.md images/', { cwd: ROOT, stdio: 'pipe' });
   try {
     execSync(`git commit -m "${message.replace(/"/g, '\\"')}"`, { cwd: ROOT, stdio: 'pipe' });
     execSync('git push', { cwd: ROOT, stdio: 'pipe' });
